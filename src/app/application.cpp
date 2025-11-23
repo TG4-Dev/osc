@@ -6,12 +6,15 @@ namespace core {
 	Application::Application(platform::windowOpts opts) {
 		platform::Init();
 
+		vulkanTest.CreateInstance();
+
 		window.Init(opts);
 	}
 
 	Application::~Application() {
 		window.Destroy();
 		platform::Exit();
+		vulkanTest.Terminate();
 	}
 
 	void Application::Run() {
