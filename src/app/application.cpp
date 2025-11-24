@@ -3,32 +3,30 @@
 
 namespace core {
 
-	Application::Application(platform::windowOpts opts) {
-		platform::Init();
+Application::Application(platform::windowOpts opts) {
+  platform::Init();
 
-		vulkanTest.CreateInstance();
+  vulkan_ctx_.CreateInstance();
 
-		window.Init(opts);
-	}
+  platform_window_.Init(opts);
+}
 
-	Application::~Application() {
-		window.Destroy();
-		platform::Exit();
-		vulkanTest.Terminate();
-	}
+Application::~Application() {
+  platform_window_.Destroy();
+  platform::Exit();
+  vulkan_ctx_.Terminate();
+}
 
-	void Application::Run() {
-		isRunning = true;
+void Application::Run() {
+  is_running_ = true;
 
-		while(isRunning) {
-			glfwPollEvents();
+  while (is_running_) {
+    glfwPollEvents();
 
-			if(glfwWindowShouldClose(window.window))
-				Stop();
-		}
-	}
+    if (glfwWindowShouldClose(platform_window_.window_))
+      Stop();
+  }
+}
 
-	void Application::Stop() {
-		isRunning = false;
-	}
-} //namespace core
+void Application::Stop() { is_running_ = false; }
+} // namespace core

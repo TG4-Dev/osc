@@ -1,8 +1,9 @@
 #include "vulkan-context.hpp"
 #include "GLFW/glfw3.h"
+#include "app/log.hpp"
 #include <stdexcept>
 
-void VulkanTest::CreateInstance() {
+void VulkanContext::CreateInstance() {
   VkApplicationInfo appInfo{};
   appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
   appInfo.pApplicationName = "Hello Triangle";
@@ -25,8 +26,13 @@ void VulkanTest::CreateInstance() {
   createInfo.enabledLayerCount = 0;
 
   if (vkCreateInstance(&createInfo, nullptr, &instance) != VK_SUCCESS) {
+    TE_CRITICAL("Cannot create Vulkan instance");
     throw std::runtime_error("failed to create instance!");
   }
+  TE_TRACE("Vulkan instance successfully created");
 }
 
-void VulkanTest::Terminate() { vkDestroyInstance(instance, nullptr); }
+void VulkanContext::Terminate() {
+  vkDestroyInstance(instance, nullptr);
+  TE_TRACE("Vulkan successfully terminated");
+}

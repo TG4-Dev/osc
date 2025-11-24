@@ -1,14 +1,12 @@
 #include "app/application.hpp"
+#include "app/log.hpp"
 
-int main (int argc, char *argv[]) {
+int main(int argc, char *argv[]) {
 
-	platform::windowOpts opts {
-		500,
-		500,
-		"Test"
-	};
-	
-	core::Application app(opts);
-	app.Run();
+  app::Log::Init();
+  platform::windowOpts opts{500, 500, "Test"};
+
+  core::Application app(opts);
+  app.Run();
   return 0;
 }

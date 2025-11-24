@@ -15,12 +15,12 @@ public:
 
   void Update();
 
-  platform::Window window;
-
-  VulkanTest vulkanTest;
-
 private:
-  bool isRunning = false;
+  platform::Window platform_window_;
+
+  VulkanContext vulkan_ctx_;
+
+  bool is_running_ = false;
 };
 
 } // namespace core

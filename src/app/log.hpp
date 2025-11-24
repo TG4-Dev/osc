@@ -22,16 +22,16 @@ private:
 
 // core::log::getcorelogger()->warn("init log");
 
-#define TE_CORE_TRACE(...) ::core::Log::GetCoreLogger()->trace(__VA_ARGS__)
-#define TE_CORE_INFO(...) ::core::Log::GetCoreLogger()->info(__VA_ARGS__)
-#define TE_CORE_WARN(...) ::core::Log::GetCoreLogger()->warn(__VA_ARGS__)
-#define TE_CORE_ERROR(...) ::core::Log::GetCoreLogger()->error(__VA_ARGS__)
+#define TE_CORE_TRACE(...) ::app::Log::GetCoreLogger()->trace(__VA_ARGS__)
+#define TE_CORE_INFO(...) ::app::Log::GetCoreLogger()->info(__VA_ARGS__)
+#define TE_CORE_WARN(...) ::app::Log::GetCoreLogger()->warn(__VA_ARGS__)
+#define TE_CORE_ERROR(...) ::app::Log::GetCoreLogger()->error(__VA_ARGS__)
 #define TE_CORE_CRITICAL(...)                                                  \
   ::core::Log::GetCoreLogger()->critical(__VA_ARGS__)
 
-#define TE_TRACE(...) ::core::Log::GetClientLogger()->trace(__VA_ARGS__)
-#define TE_INFO(...) ::core::Log::GetClientLogger()->info(__VA_ARGS__)
-#define TE_WARN(...) ::core::Log::GetClientLogger()->warn(__VA_ARGS__)
-#define TE_ERROR(...) ::core::Log::GetClientLogger()->error(__VA_ARGS__)
-#define TE_CRITICAL(...) ::core::Log::GetClientLogger()->critical(__VA_ARGS__)
+#define TE_TRACE(...) ::app::Log::GetClientLogger()->trace(__VA_ARGS__)
+#define TE_INFO(...) ::app::Log::GetClientLogger()->info(__VA_ARGS__)
+#define TE_WARN(...) ::app::Log::GetClientLogger()->warn(__VA_ARGS__)
+#define TE_ERROR(...) ::app::Log::GetClientLogger()->error(__VA_ARGS__)
+#define TE_CRITICAL(...) ::app::Log::GetClientLogger()->critical(__VA_ARGS__)
 } // namespace app
