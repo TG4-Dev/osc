@@ -17,6 +17,9 @@ public:
   void Init(windowOpts opts);
   void Destroy();
 
+  GLFWwindow *GetWindowHandle() { return window_; }
+
+private:
   GLFWwindow *window_;
 };
 

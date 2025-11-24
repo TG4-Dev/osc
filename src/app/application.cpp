@@ -23,7 +23,7 @@ void Application::Run() {
   while (is_running_) {
     glfwPollEvents();
 
-    if (glfwWindowShouldClose(platform_window_.window_))
+    if (glfwWindowShouldClose(platform_window_.GetWindowHandle()))
       Stop();
   }
 }
