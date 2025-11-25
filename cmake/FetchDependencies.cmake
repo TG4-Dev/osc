@@ -24,9 +24,16 @@ FetchContent_Declare(
     URL https://github.com/google/googletest/archive/refs/tags/v1.14.0.zip
 )
 
+FetchContent_Declare(
+  Taskflow
+  GIT_REPOSITORY https://github.com/taskflow/taskflow.git
+  GIT_TAG v3.11.0
+)
+
 FetchContent_MakeAvailable(
   spdlog
   glm
   glfw
   gtest
+  Taskflow
 )
