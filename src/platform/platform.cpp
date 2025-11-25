@@ -1,5 +1,5 @@
 #include "platform.hpp"
-#include "app/log.hpp"
+#include "platform/log.hpp"
 #include <stdexcept>
 
 void platform::Init() {

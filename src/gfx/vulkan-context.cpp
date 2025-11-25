@@ -1,6 +1,6 @@
 #include "vulkan-context.hpp"
 #include "GLFW/glfw3.h"
-#include "app/log.hpp"
+#include "platform/log.hpp"
 #include <stdexcept>
 
 void VulkanContext::CreateInstance() {

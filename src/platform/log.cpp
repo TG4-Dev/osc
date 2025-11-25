@@ -6,12 +6,12 @@
 #include "spdlog/sinks/stdout_color_sinks.h"
 #include "spdlog/spdlog.h"
 
-namespace app {
+namespace platform {
 
 std::shared_ptr<spdlog::logger> Log::s_core_logger;
 std::shared_ptr<spdlog::logger> Log::s_client_logger;
 
-void app::Log::Init() {
+void platform::Log::Init() {
   std::vector<spdlog::sink_ptr> logSinks;
   logSinks.emplace_back(
       std::make_shared<spdlog::sinks::stdout_color_sink_mt>());
@@ -33,4 +33,4 @@ void app::Log::Init() {
   s_client_logger->set_level(spdlog::level::trace);
   s_client_logger->flush_on(spdlog::level::trace);
 }
-} // namespace app
+} // namespace platform

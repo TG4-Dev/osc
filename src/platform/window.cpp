@@ -1,6 +1,6 @@
 #include "window.hpp"
 #include "GLFW/glfw3.h"
-#include "app/log.hpp"
+#include "platform/log.hpp"
 #include <stdexcept>
 
 namespace platform {
