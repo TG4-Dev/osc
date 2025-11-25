@@ -25,7 +25,7 @@ void VulkanContext::CreateInstance() {
   createInfo.ppEnabledExtensionNames = glfwExtensions;
   createInfo.enabledLayerCount = 0;
 
-  if (vkCreateInstance(&createInfo, nullptr, &instance) != VK_SUCCESS) {
+  if (vkCreateInstance(&createInfo, nullptr, &instance_) != VK_SUCCESS) {
     TE_CRITICAL("Cannot create Vulkan instance");
     throw std::runtime_error("failed to create instance!");
   }
@@ -33,6 +33,6 @@ void VulkanContext::CreateInstance() {
 }
 
 void VulkanContext::Terminate() {
-  vkDestroyInstance(instance, nullptr);
+  vkDestroyInstance(instance_, nullptr);
   TE_TRACE("Vulkan successfully terminated");
 }

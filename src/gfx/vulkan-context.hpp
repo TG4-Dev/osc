@@ -8,5 +8,5 @@ public:
   void CreateInstance();
 
 private:
-  VkInstance instance;
+  VkInstance instance_;
 };
