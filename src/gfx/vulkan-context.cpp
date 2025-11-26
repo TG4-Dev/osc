@@ -1,9 +1,9 @@
 #include "vulkan-context.hpp"
 #include "GLFW/glfw3.h"
 #include "platform/log.hpp"
-#include <stdexcept>
+#include <vulkan/vulkan_core.h>
 
-void VulkanContext::CreateInstance() {
+VkResult VulkanContext::CreateInstance() {
   VkApplicationInfo appInfo{};
   appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
   appInfo.pApplicationName = "Hello Triangle";
@@ -25,14 +25,23 @@ void VulkanContext::CreateInstance() {
   createInfo.ppEnabledExtensionNames = glfwExtensions;
   createInfo.enabledLayerCount = 0;
 
-  if (vkCreateInstance(&createInfo, nullptr, &instance_) != VK_SUCCESS) {
+  VkResult result = vkCreateInstance(&createInfo, nullptr, &instance_);
+  if (result != VK_SUCCESS) {
     TE_CRITICAL("Cannot create Vulkan instance");
-    throw std::runtime_error("failed to create instance!");
+    return result;
   }
   TE_TRACE("Vulkan instance successfully created");
+  return VK_SUCCESS;
 }
 
-void VulkanContext::Terminate() {
+VkResult VulkanContext::Terminate() {
+  if (instance_ == VK_NULL_HANDLE) {
+    TE_WARN("Attemted to terminate null Vulkan instance");
+    return VK_ERROR_INITIALIZATION_FAILED;
+  }
+
   vkDestroyInstance(instance_, nullptr);
+  instance_ = VK_NULL_HANDLE;
   TE_TRACE("Vulkan successfully terminated");
+  return VK_SUCCESS;
 }
