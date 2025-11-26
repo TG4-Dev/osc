@@ -1,7 +1,6 @@
 #pragma once
 #include "gfx/vulkan-context.hpp"
 #include "platform/window.hpp"
-#include <vulkan/vulkan_core.h>
 
 namespace core {
 

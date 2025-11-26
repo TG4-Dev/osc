@@ -14,7 +14,7 @@ public:
   Window();
   ~Window();
 
-  void Init(windowOpts opts);
+  int Init(windowOpts opts);
   void Destroy();
 
   GLFWwindow *GetWindowHandle() { return window_; }

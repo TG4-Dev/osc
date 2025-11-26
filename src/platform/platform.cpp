@@ -1,14 +1,13 @@
 #include "platform.hpp"
 #include "platform/log.hpp"
-#include <stdexcept>
 
-void platform::Init() {
+int platform::Init() {
   if (!glfwInit()) {
     TE_CRITICAL("Cannot initialize glfw");
-    throw std::runtime_error("glfw init error");
+		return GLFW_FALSE;
   }
-  glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
   TE_TRACE("Glfw successfuly initialized");
+	return GLFW_TRUE;
 }
 
 void platform::Exit() {

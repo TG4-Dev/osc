@@ -3,7 +3,7 @@
 
 namespace platform {
 
-	void Init();
+  int Init();
 	void Exit();
 
 } //platform 

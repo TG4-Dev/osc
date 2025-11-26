@@ -1,20 +1,26 @@
 #include "application.hpp"
 #include "platform/platform.hpp"
+#include <vulkan/vk_enum_string_helper.h>
+#include <stdexcept>
 
 namespace core {
 
 Application::Application(platform::windowOpts opts) {
-  platform::Init();
-
-  vulkan_ctx_.CreateInstance();
-
-  platform_window_.Init(opts);
+  if(platform::Init() == GLFW_FALSE) {
+    throw std::runtime_error("glfw init error");
+	}
+	if(platform_window_.Init(opts) == GLFW_FALSE) {
+		throw std::runtime_error("Error creating window");
+	}
+  if(VkResult res = vulkan_ctx_.CreateInstance(); res != VK_SUCCESS) {
+		throw std::runtime_error(string_VkResult(res));
+	}
 }
 
 Application::~Application() {
-  platform_window_.Destroy();
+	vulkan_ctx_.Terminate(); 
+	platform_window_.Destroy();
   platform::Exit();
-  vulkan_ctx_.Terminate();
 }
 
 void Application::Run() {
@@ -28,5 +34,8 @@ void Application::Run() {
   }
 }
 
-void Application::Stop() { is_running_ = false; }
+void Application::Stop() { 
+	is_running_ = false; 
+}
+
 } // namespace core
