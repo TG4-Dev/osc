@@ -25,6 +25,21 @@ VkResult VulkanContext::CreateInstance() {
   createInfo.ppEnabledExtensionNames = glfwExtensions;
   createInfo.enabledLayerCount = 0;
 
+  std::vector<const char*> requiredExtensions;
+
+	#ifdef __APPLE__
+	for(uint32_t i = 0; i < glfwExtensionCount; i++) {
+		requiredExtensions.emplace_back(glfwExtensions[i]);
+	}
+
+	requiredExtensions.emplace_back(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
+
+	createInfo.flags |= VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
+
+	createInfo.enabledExtensionCount = (uint32_t) requiredExtensions.size();
+	createInfo.ppEnabledExtensionNames = requiredExtensions.data();
+	#endif
+
   VkResult result = vkCreateInstance(&createInfo, nullptr, &instance_);
   if (result != VK_SUCCESS) {
     TE_CRITICAL("Cannot create Vulkan instance");
