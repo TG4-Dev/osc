@@ -1,7 +1,17 @@
 #include "vulkan-context.hpp"
 #include "GLFW/glfw3.h"
 #include "platform/log.hpp"
+#include <cstddef>
+#include <cstdint>
 #include <vulkan/vulkan_core.h>
+
+VkResult VulkanContext::Init() {
+  VkResult result = CreateInstance();
+  result = EnumeratePhysicalDevices();
+  // result = SelectPhysicalDevice();
+
+  return result;
+}
 
 VkResult VulkanContext::CreateInstance() {
   VkApplicationInfo appInfo{};
@@ -25,20 +35,21 @@ VkResult VulkanContext::CreateInstance() {
   createInfo.ppEnabledExtensionNames = glfwExtensions;
   createInfo.enabledLayerCount = 0;
 
-  std::vector<const char*> requiredExtensions;
+  std::vector<const char *> requiredExtensions;
 
-	#ifdef __APPLE__
-	for(uint32_t i = 0; i < glfwExtensionCount; i++) {
-		requiredExtensions.emplace_back(glfwExtensions[i]);
-	}
+#ifdef __APPLE__
+  for (uint32_t i = 0; i < glfwExtensionCount; i++) {
+    requiredExtensions.emplace_back(glfwExtensions[i]);
+  }
 
-	requiredExtensions.emplace_back(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
+  requiredExtensions.emplace_back(
+      VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
 
-	createInfo.flags |= VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
+  createInfo.flags |= VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
 
-	createInfo.enabledExtensionCount = (uint32_t) requiredExtensions.size();
-	createInfo.ppEnabledExtensionNames = requiredExtensions.data();
-	#endif
+  createInfo.enabledExtensionCount = (uint32_t)requiredExtensions.size();
+  createInfo.ppEnabledExtensionNames = requiredExtensions.data();
+#endif
 
   VkResult result = vkCreateInstance(&createInfo, nullptr, &instance_);
   if (result != VK_SUCCESS) {
@@ -47,6 +58,25 @@ VkResult VulkanContext::CreateInstance() {
   }
   TE_TRACE("Vulkan instance successfully created");
   return VK_SUCCESS;
+}
+
+VkResult VulkanContext::EnumeratePhysicalDevices() {
+  uint32_t physical_device_count = 0;
+
+  VkResult result = VK_SUCCESS;
+
+  // Getting amount of phys devices
+  result =
+      vkEnumeratePhysicalDevices(instance_, &physical_device_count, nullptr);
+
+  if (result == VK_SUCCESS) {
+    physical_devices_.resize(physical_device_count);
+    vkEnumeratePhysicalDevices(instance_, &physical_device_count,
+                               &physical_devices_[0]);
+
+    TE_TRACE("Found {} VkDevices", physical_device_count);
+  }
+  return result;
 }
 
 VkResult VulkanContext::Terminate() {
