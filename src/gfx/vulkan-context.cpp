@@ -92,15 +92,31 @@ VkResult VulkanContext::SelectPhysicalDevice() {
    physical_device_ = candidates.rbegin()->second; 
    return VK_SUCCESS;
   } else {
-    return VK_ERROR_INITIALIZATION_FAILED
+    return VK_ERROR_INITIALIZATION_FAILED;
   }
 }
 
 
 int VulkanContext::RateDeviceSuitability(VkPhysicalDevice device) {
-  int score = 0;
 
-  if(device.)
+  VkPhysicalDeviceProperties device_properties{};
+  VkPhysicalDeviceFeatures device_features{};
+
+
+  vkGetPhysicalDeviceProperties(device, &device_properties);
+  vkGetPhysicalDeviceFeatures(device, &device_features);
+  int score = 0;
+  if (device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
+    score += 1000;
+  }
+
+  score += device_properties.limits.maxImageDimension2D;
+
+  if (!device_features.geometryShader) {
+    return 0;
+  }
+
+  return score;
 }
 VkResult VulkanContext::Terminate() {
   if (instance_ == VK_NULL_HANDLE) {
