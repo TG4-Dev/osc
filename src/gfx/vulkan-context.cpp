@@ -2,6 +2,7 @@
 #include "GLFW/glfw3.h"
 #include "platform/log.hpp"
 #include <cstddef>
+#include <map>
 #include <cstdint>
 #include <vulkan/vulkan_core.h>
 
@@ -79,6 +80,28 @@ VkResult VulkanContext::EnumeratePhysicalDevices() {
   return result;
 }
 
+VkResult VulkanContext::SelectPhysicalDevice() {
+  std::multimap<int, VkPhysicalDevice> candidates;
+
+  for( const auto& device : physical_devices_) {
+    int score = RateDeviceSuitability(device);
+    candidates.insert(std::make_pair(score, device));
+  }
+
+  if (candidates.rbegin()->first > 0) {
+   physical_device_ = candidates.rbegin()->second; 
+   return VK_SUCCESS;
+  } else {
+    return VK_ERROR_INITIALIZATION_FAILED
+  }
+}
+
+
+int VulkanContext::RateDeviceSuitability(VkPhysicalDevice device) {
+  int score = 0;
+
+  if(device.)
+}
 VkResult VulkanContext::Terminate() {
   if (instance_ == VK_NULL_HANDLE) {
     TE_WARN("Attemted to terminate null Vulkan instance");
