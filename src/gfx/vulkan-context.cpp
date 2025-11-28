@@ -114,9 +114,9 @@ int VulkanContext::RateDeviceSuitability(VkPhysicalDevice device) {
 
   score += device_properties.limits.maxImageDimension2D;
 
-  if (!device_features.geometryShader) {
-    return 0;
-  }
+  /*if (!device_features.geometryShader) {*/
+  /*  return 0;*/
+  /*}*/
 
   return score;
 }
