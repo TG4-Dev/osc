@@ -12,6 +12,8 @@ private:
   VkResult CreateInstance();
   VkResult EnumeratePhysicalDevices();
   VkResult SelectPhysicalDevice();
+  
+  int RateDeviceSuitability(VkPhysicalDevice device);
 
 private:
   VkInstance instance_ = VK_NULL_HANDLE;

@@ -3,12 +3,13 @@
 #include "platform/log.hpp"
 #include <cstddef>
 #include <cstdint>
+#include <map>
 #include <vulkan/vulkan_core.h>
 
 VkResult VulkanContext::Init() {
   VkResult result = CreateInstance();
   result = EnumeratePhysicalDevices();
-  // result = SelectPhysicalDevice();
+  result = SelectPhysicalDevice();
 
   return result;
 }
@@ -77,6 +78,49 @@ VkResult VulkanContext::EnumeratePhysicalDevices() {
     TE_TRACE("Found {} VkDevices", physical_device_count);
   }
   return result;
+}
+
+VkResult VulkanContext::SelectPhysicalDevice() {
+  std::multimap<int, VkPhysicalDevice> candidates;
+
+  for (const auto &device : physical_devices_) {
+    int score = RateDeviceSuitability(device);
+    candidates.insert(std::make_pair(score, device));
+  }
+
+  if (candidates.rbegin()->first > 0) {
+    VkPhysicalDeviceProperties device_properties;
+
+    physical_device_ = candidates.rbegin()->second;
+
+    vkGetPhysicalDeviceProperties(physical_device_, &device_properties);
+
+    TE_TRACE("Selected physical device: {} ", device_properties.deviceName);
+    return VK_SUCCESS;
+  } else {
+    return VK_ERROR_INITIALIZATION_FAILED;
+  }
+}
+
+int VulkanContext::RateDeviceSuitability(VkPhysicalDevice device) {
+
+  VkPhysicalDeviceProperties device_properties{};
+  VkPhysicalDeviceFeatures device_features{};
+
+  vkGetPhysicalDeviceProperties(device, &device_properties);
+  vkGetPhysicalDeviceFeatures(device, &device_features);
+  int score = 0;
+  if (device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
+    score += 1000;
+  }
+
+  score += device_properties.limits.maxImageDimension2D;
+
+  if (!device_features.geometryShader) {
+    return 0;
+  }
+
+  return score;
 }
 
 VkResult VulkanContext::Terminate() {
