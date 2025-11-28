@@ -6,12 +6,15 @@
 class VulkanContext {
 public:
   VkResult Init();
-  VkResult CreateInstance();
   VkResult Terminate();
+
+private:
+  VkResult CreateInstance();
   VkResult EnumeratePhysicalDevices();
   VkResult SelectPhysicalDevice();
 
 private:
-  VkInstance instance_;
+  VkInstance instance_ = VK_NULL_HANDLE;
   std::vector<VkPhysicalDevice> physical_devices_;
+  VkPhysicalDevice physical_device_ = VK_NULL_HANDLE;
 };
