@@ -2,14 +2,14 @@
 #include "GLFW/glfw3.h"
 #include "platform/log.hpp"
 #include <cstddef>
-#include <map>
 #include <cstdint>
+#include <map>
 #include <vulkan/vulkan_core.h>
 
 VkResult VulkanContext::Init() {
   VkResult result = CreateInstance();
   result = EnumeratePhysicalDevices();
-  // result = SelectPhysicalDevice();
+  result = SelectPhysicalDevice();
 
   return result;
 }
@@ -83,25 +83,29 @@ VkResult VulkanContext::EnumeratePhysicalDevices() {
 VkResult VulkanContext::SelectPhysicalDevice() {
   std::multimap<int, VkPhysicalDevice> candidates;
 
-  for( const auto& device : physical_devices_) {
+  for (const auto &device : physical_devices_) {
     int score = RateDeviceSuitability(device);
     candidates.insert(std::make_pair(score, device));
   }
 
   if (candidates.rbegin()->first > 0) {
-   physical_device_ = candidates.rbegin()->second; 
-   return VK_SUCCESS;
+    VkPhysicalDeviceProperties device_properties;
+
+    physical_device_ = candidates.rbegin()->second;
+
+    vkGetPhysicalDeviceProperties(physical_device_, &device_properties);
+
+    TE_TRACE("Selected physical device: {} ", device_properties.deviceName);
+    return VK_SUCCESS;
   } else {
     return VK_ERROR_INITIALIZATION_FAILED;
   }
 }
 
-
 int VulkanContext::RateDeviceSuitability(VkPhysicalDevice device) {
 
   VkPhysicalDeviceProperties device_properties{};
   VkPhysicalDeviceFeatures device_features{};
-
 
   vkGetPhysicalDeviceProperties(device, &device_properties);
   vkGetPhysicalDeviceFeatures(device, &device_features);
@@ -118,6 +122,7 @@ int VulkanContext::RateDeviceSuitability(VkPhysicalDevice device) {
 
   return score;
 }
+
 VkResult VulkanContext::Terminate() {
   if (instance_ == VK_NULL_HANDLE) {
     TE_WARN("Attemted to terminate null Vulkan instance");
