@@ -104,6 +104,13 @@ VkResult VulkanContext::SelectPhysicalDevice() {
   }
 }
 
+VkResult VulkanContext::CreateLogicalDevice() {
+  
+
+
+  return VK_SUCCESS;  
+}
+
 int VulkanContext::RateDeviceSuitability(VkPhysicalDevice device) {
 
   VkPhysicalDeviceProperties device_properties{};
@@ -123,6 +130,28 @@ int VulkanContext::RateDeviceSuitability(VkPhysicalDevice device) {
   /*}*/
 
   return score;
+}
+
+
+uint32_t SelectQueueFamilyIndex(VkPhysicalDevice device) {
+  uint32_t family_count = 0;
+  
+  vkGetPhysicalDeviceQueueFamilyProperties(device, &family_count, nullptr);
+  
+  if(!family_count) {
+    return UINT32_MAX;
+  }
+
+  std::vector<VkQueueFamilyProperties> families(family_count);
+  vkGetPhysicalDeviceQueueFamilyProperties(device, &family_count, families.data());
+
+  for(int32_t i = 0; i < families.size(); ++i) {
+    if (families[i].queueFlags & VK_QUEUE_GRAPHICS_BIT){
+      return i;
+    }
+  }
+
+  return UINT32_MAX;
 }
 
 VkResult VulkanContext::Terminate() {
