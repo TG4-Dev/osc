@@ -32,7 +32,7 @@ VkResult VulkanContext::CreateInstance() {
 
   glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
 
-	createInfo.enabledLayerCount = 0;
+  createInfo.enabledLayerCount = 0;
 
   std::vector<const char *> requiredExtensions;
 
@@ -81,7 +81,11 @@ VkResult VulkanContext::EnumeratePhysicalDevices() {
 VkResult VulkanContext::SelectPhysicalDevice() {
   std::multimap<int, VkPhysicalDevice> candidates;
 
+  VkPhysicalDeviceProperties device_properties{};
   for (const auto &device : physical_devices_) {
+
+    vkGetPhysicalDeviceProperties(device, &device_properties);
+    TE_TRACE("Found physical device: {}", device_properties.deviceName);
     int score = RateDeviceSuitability(device);
     candidates.insert(std::make_pair(score, device));
   }
