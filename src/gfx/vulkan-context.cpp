@@ -10,6 +10,7 @@ VkResult VulkanContext::Init() {
   VkResult result = CreateInstance();
   result = EnumeratePhysicalDevices();
   result = SelectPhysicalDevice();
+  result = CreateLogicalDevice();
 
   return result;
 }
@@ -105,19 +106,48 @@ VkResult VulkanContext::SelectPhysicalDevice() {
 }
 
 VkResult VulkanContext::CreateLogicalDevice() {
-  
+  uint32_t queue_family_index = SelectQueueFamilyIndex(physical_device_);
+  if (queue_family_index == UINT32_MAX) {
+    TE_ERROR("Cannot find queue");
+    return VK_ERROR_INITIALIZATION_FAILED;
+  }
 
+  // Filling queue creation info
+  float queue_priority = 1.0f;
+  VkDeviceQueueCreateInfo queue_create_info{};
+  queue_create_info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+  queue_create_info.queueFamilyIndex = queue_family_index;
+  queue_create_info.queueCount = 1;
+  queue_create_info.pQueuePriorities = &queue_priority;
 
-  return VK_SUCCESS;  
+  // Filling logical device creation info
+  VkDeviceCreateInfo device_create_info{};
+  device_create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+  device_create_info.queueCreateInfoCount = 1;
+  device_create_info.pQueueCreateInfos = &queue_create_info;
+
+  // Extensions
+  const std::vector<const char *> device_extensions = {
+      VK_KHR_SWAPCHAIN_EXTENSION_NAME};
+  device_create_info.enabledExtensionCount =
+      static_cast<uint32_t>(device_extensions.size());
+  device_create_info.ppEnabledExtensionNames = device_extensions.data();
+
+  // Creating logical device
+  VkResult result =
+      vkCreateDevice(physical_device_, &device_create_info, nullptr, &device_);
+
+  TE_TRACE("Device Created successfully");
+  return result;
 }
 
-int VulkanContext::RateDeviceSuitability(VkPhysicalDevice device) {
+int VulkanContext::RateDeviceSuitability(VkPhysicalDevice physical_device) {
 
   VkPhysicalDeviceProperties device_properties{};
   VkPhysicalDeviceFeatures device_features{};
 
-  vkGetPhysicalDeviceProperties(device, &device_properties);
-  vkGetPhysicalDeviceFeatures(device, &device_features);
+  vkGetPhysicalDeviceProperties(physical_device, &device_properties);
+  vkGetPhysicalDeviceFeatures(physical_device, &device_features);
   int score = 0;
   if (device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
     score += 1000;
@@ -132,21 +162,23 @@ int VulkanContext::RateDeviceSuitability(VkPhysicalDevice device) {
   return score;
 }
 
-
-uint32_t SelectQueueFamilyIndex(VkPhysicalDevice device) {
+uint32_t
+VulkanContext::SelectQueueFamilyIndex(VkPhysicalDevice physical_device) {
   uint32_t family_count = 0;
-  
-  vkGetPhysicalDeviceQueueFamilyProperties(device, &family_count, nullptr);
-  
-  if(!family_count) {
+
+  vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &family_count,
+                                           nullptr);
+
+  if (!family_count) {
     return UINT32_MAX;
   }
 
   std::vector<VkQueueFamilyProperties> families(family_count);
-  vkGetPhysicalDeviceQueueFamilyProperties(device, &family_count, families.data());
+  vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &family_count,
+                                           families.data());
 
-  for(int32_t i = 0; i < families.size(); ++i) {
-    if (families[i].queueFlags & VK_QUEUE_GRAPHICS_BIT){
+  for (int32_t i = 0; i < families.size(); ++i) {
+    if (families[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
       return i;
     }
   }
