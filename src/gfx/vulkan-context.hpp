@@ -12,11 +12,14 @@ private:
   VkResult CreateInstance();
   VkResult EnumeratePhysicalDevices();
   VkResult SelectPhysicalDevice();
-  
+  VkResult CreateLogicalDevice();
+
   int RateDeviceSuitability(VkPhysicalDevice device);
+  uint32_t SelectQueueFamilyIndex(VkPhysicalDevice physical_device);
 
 private:
   VkInstance instance_ = VK_NULL_HANDLE;
   std::vector<VkPhysicalDevice> physical_devices_;
   VkPhysicalDevice physical_device_ = VK_NULL_HANDLE;
+  VkDevice device_ = VK_NULL_HANDLE;
 };
