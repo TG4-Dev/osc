@@ -18,7 +18,8 @@ private:
   VkResult CreateSurface(GLFWwindow *window);
 
   int RateDeviceSuitability(VkPhysicalDevice device);
-  uint32_t SelectQueueFamilyIndex(VkPhysicalDevice physical_device);
+	struct QueueFamilyIndices;
+	QueueFamilyIndices FindFamilyIndices(VkPhysicalDevice);
 
 private:
   VkInstance instance_ = VK_NULL_HANDLE;
@@ -27,5 +28,5 @@ private:
   VkDevice device_ = VK_NULL_HANDLE;
   VkSurfaceKHR surface_ = VK_NULL_HANDLE;
 	VkQueue graphics_queue_;
-	VkQueue present_quueu_;
+	VkQueue present_queue_;
 };
