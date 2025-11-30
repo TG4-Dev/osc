@@ -141,15 +141,15 @@ VkResult VulkanContext::CreateLogicalDevice() {
   device_create_info.pQueueCreateInfos = &queue_create_info;
 
   // Extensions
-  const std::vector<const char *> device_extensions = {
-      VK_KHR_SWAPCHAIN_EXTENSION_NAME};
-  device_create_info.enabledExtensionCount =
-      static_cast<uint32_t>(device_extensions.size());
+  const std::vector<const char *> device_extensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
+  device_create_info.enabledExtensionCount = static_cast<uint32_t>(device_extensions.size());
   device_create_info.ppEnabledExtensionNames = device_extensions.data();
 
   // Creating logical device
   VkResult result =
       vkCreateDevice(physical_device_, &device_create_info, nullptr, &device_);
+
+	vkGetDeviceQueue(device_, queue_family_index, 0, &graphics_queue_);
 
   TE_TRACE("Device Created successfully");
   return result;
@@ -213,6 +213,13 @@ VulkanContext::SelectQueueFamilyIndex(VkPhysicalDevice physical_device) {
 }
 
 VkResult VulkanContext::Terminate() {
+	if (surface_ == VK_NULL_HANDLE) {
+    TE_WARN("Attemted to terminate null Vulkan surface");
+		return VK_ERROR_INITIALIZATION_FAILED;
+	}
+
+	vkDestroySurfaceKHR(instance_, surface_, nullptr);
+
   if (instance_ == VK_NULL_HANDLE) {
     TE_WARN("Attemted to terminate null Vulkan instance");
     return VK_ERROR_INITIALIZATION_FAILED;
@@ -220,6 +227,7 @@ VkResult VulkanContext::Terminate() {
 
   vkDestroyInstance(instance_, nullptr);
   instance_ = VK_NULL_HANDLE;
+
   TE_TRACE("Vulkan successfully terminated");
   return VK_SUCCESS;
 }
