@@ -1,17 +1,30 @@
 #include "vulkan-context.hpp"
-#include "GLFW/glfw3.h"
 #include "platform/log.hpp"
-#include <cstddef>
 #include <cstdint>
 #include <map>
 #include <vulkan/vulkan_core.h>
 
 VkResult VulkanContext::Init(GLFWwindow *window) {
   VkResult result = CreateInstance();
+	if (result != VK_SUCCESS) {
+		return result;
+	}
   result = EnumeratePhysicalDevices();
+	if (result != VK_SUCCESS) {
+		return result;
+	}
   result = SelectPhysicalDevice();
+	if (result != VK_SUCCESS) {
+		return result;
+	}
   result = CreateLogicalDevice();
+	if (result != VK_SUCCESS) {
+		return result;
+	}
   result = CreateSurface(window);
+	if (result != VK_SUCCESS) {
+		return result;
+	}
 
   return result;
 }
