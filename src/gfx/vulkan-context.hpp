@@ -3,9 +3,11 @@
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_core.h>
 
+#include "GLFW/glfw3.h"
+
 class VulkanContext {
 public:
-  VkResult Init();
+  VkResult Init(GLFWwindow *window);
   VkResult Terminate();
 
 private:
@@ -13,6 +15,7 @@ private:
   VkResult EnumeratePhysicalDevices();
   VkResult SelectPhysicalDevice();
   VkResult CreateLogicalDevice();
+  VkResult CreateSurface(GLFWwindow *window);
 
   int RateDeviceSuitability(VkPhysicalDevice device);
   uint32_t SelectQueueFamilyIndex(VkPhysicalDevice physical_device);
@@ -22,4 +25,5 @@ private:
   std::vector<VkPhysicalDevice> physical_devices_;
   VkPhysicalDevice physical_device_ = VK_NULL_HANDLE;
   VkDevice device_ = VK_NULL_HANDLE;
+  VkSurfaceKHR surface_ = VK_NULL_HANDLE;
 };

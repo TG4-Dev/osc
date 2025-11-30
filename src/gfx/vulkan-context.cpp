@@ -6,11 +6,12 @@
 #include <map>
 #include <vulkan/vulkan_core.h>
 
-VkResult VulkanContext::Init() {
+VkResult VulkanContext::Init(GLFWwindow *window) {
   VkResult result = CreateInstance();
   result = EnumeratePhysicalDevices();
   result = SelectPhysicalDevice();
   result = CreateLogicalDevice();
+  result = CreateSurface(window);
 
   return result;
 }
@@ -138,6 +139,18 @@ VkResult VulkanContext::CreateLogicalDevice() {
       vkCreateDevice(physical_device_, &device_create_info, nullptr, &device_);
 
   TE_TRACE("Device Created successfully");
+  return result;
+}
+
+VkResult VulkanContext::CreateSurface(GLFWwindow *window) {
+  if (!window) {
+    TE_ERROR("Cannot create surface");
+    return VK_ERROR_INITIALIZATION_FAILED;
+  }
+  VkResult result =
+      glfwCreateWindowSurface(instance_, window, nullptr, &surface_);
+
+  TE_TRACE("Surface created successfully");
   return result;
 }
 
