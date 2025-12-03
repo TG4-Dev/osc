@@ -16,10 +16,15 @@ private:
   VkResult SelectPhysicalDevice();
   VkResult CreateLogicalDevice();
   VkResult CreateSurface(GLFWwindow *window);
+	VkResult CreateSwapchain(GLFWwindow *window);
 
   int RateDeviceSuitability(VkPhysicalDevice device);
+
 	struct QueueFamilyIndices;
 	QueueFamilyIndices FindFamilyIndices(VkPhysicalDevice);
+
+	struct SwapChainSupportDetails;
+	SwapChainSupportDetails QuerySwapChainSupport(VkPhysicalDevice);
 
 private:
   VkInstance instance_ = VK_NULL_HANDLE;
@@ -29,4 +34,9 @@ private:
   VkSurfaceKHR surface_ = VK_NULL_HANDLE;
 	VkQueue graphics_queue_;
 	VkQueue present_queue_;
+	VkSwapchainKHR swapchain_ = VK_NULL_HANDLE;
+	std::vector<VkImage> swapchain_images_;
+	VkFormat swapchain_image_format_;
+	VkExtent2D swapchain_extent_;
+
 };
