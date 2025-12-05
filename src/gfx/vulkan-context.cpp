@@ -1,5 +1,6 @@
 #include "vulkan-context.hpp"
 #include "platform/log.hpp"
+#include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <set>
@@ -25,7 +26,7 @@ VkResult VulkanContext::Init(GLFWwindow *window) {
   VkResult result = CreateInstance();
 	if (result != VK_SUCCESS) {
 		return result;
-	}	
+	}
 	result = CreateSurface(window);
 	if (result != VK_SUCCESS) {
 		return result;
@@ -37,7 +38,7 @@ VkResult VulkanContext::Init(GLFWwindow *window) {
   result = SelectPhysicalDevice();
 	if (result != VK_SUCCESS) {
 		return result;
-	} 
+	}
   result = CreateLogicalDevice();
 	if (result != VK_SUCCESS) {
 		return result;
@@ -45,6 +46,10 @@ VkResult VulkanContext::Init(GLFWwindow *window) {
 	result = CreateSwapchain(window);
 	if (result != VK_SUCCESS) {
 		return result;
+	}
+	result = CreateImageViews();
+	if (result != VK_SUCCESS) {
+	  return result;
 	}
 
   return result;
@@ -352,8 +357,41 @@ VkResult VulkanContext::CreateSwapchain(GLFWwindow *window) {
 	return result;
 }
 
+VkResult VulkanContext::CreateImageViews() {
+
+  VkResult result = VK_SUCCESS;
+
+  swapchain_image_views_.resize(swapchain_images_.size());
+
+  for (size_t i = 0; i < swapchain_images_.size(); i++) {
+    VkImageViewCreateInfo createInfo{};
+    createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    createInfo.image = swapchain_images_[i];
+    createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    createInfo.format = swapchain_image_format_;
+    createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+    createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+    createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+    createInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+    createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    createInfo.subresourceRange.baseMipLevel = 0;
+    createInfo.subresourceRange.levelCount = 1;
+    createInfo.subresourceRange.baseArrayLayer = 0;
+    createInfo.subresourceRange.layerCount = 1;
+    if (!vkCreateImageView(device_, &createInfo, nullptr, &swapchain_image_views_[i])) {
+      result = VK_ERROR_UNKNOWN;
+    }
+  }
+
+  return result;
+}
+
 VkResult VulkanContext::Terminate() {
-	
+
+  for(auto image_views : swapchain_image_views_) {
+    vkDestroyImageView(device_, image_views, nullptr);
+  }
+
 	if (swapchain_ == VK_NULL_HANDLE) {
     TE_WARN("Attemted to terminate null Vulkan swapchain");
 		return VK_ERROR_INITIALIZATION_FAILED;

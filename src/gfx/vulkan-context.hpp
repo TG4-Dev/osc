@@ -17,6 +17,7 @@ private:
   VkResult CreateLogicalDevice();
   VkResult CreateSurface(GLFWwindow *window);
 	VkResult CreateSwapchain(GLFWwindow *window);
+	VkResult CreateImageViews();
 
   int RateDeviceSuitability(VkPhysicalDevice device);
 
@@ -38,5 +39,6 @@ private:
 	std::vector<VkImage> swapchain_images_;
 	VkFormat swapchain_image_format_;
 	VkExtent2D swapchain_extent_;
+	std::vector<VkImageView> swapchain_image_views_;
 
 };
