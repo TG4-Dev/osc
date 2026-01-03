@@ -82,7 +82,8 @@ VkResult VulkanContext::CreateInstance() {
   }
 
 #ifdef __APPLE__
-  requiredExtensions.emplace_back(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
+  requiredExtensions.emplace_back(
+      VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
 
   createInfo.flags |= VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
 #endif
@@ -105,11 +106,13 @@ VkResult VulkanContext::EnumeratePhysicalDevices() {
   VkResult result = VK_SUCCESS;
 
   // Getting amount of phys devices
-  result = vkEnumeratePhysicalDevices(instance_, &physical_device_count, nullptr);
+  result =
+      vkEnumeratePhysicalDevices(instance_, &physical_device_count, nullptr);
 
   if (result == VK_SUCCESS) {
     physical_devices_.resize(physical_device_count);
-    vkEnumeratePhysicalDevices(instance_, &physical_device_count, &physical_devices_[0]);
+    vkEnumeratePhysicalDevices(instance_, &physical_device_count,
+                               &physical_devices_[0]);
 
     TE_TRACE("Found {} VkDevices", physical_device_count);
   }
@@ -143,10 +146,8 @@ VkResult VulkanContext::SelectPhysicalDevice() {
 
 VkResult VulkanContext::CreateLogicalDevice() {
   QueueFamilyIndices indices = FindFamilyIndices(physical_device_);
-  std::set<uint32_t> uniqueQueueFamilies = {
-		indices.graphicsFamily.value(), 
-		indices.presentFamily.value()
-	};
+  std::set<uint32_t> uniqueQueueFamilies = {indices.graphicsFamily.value(),
+                                            indices.presentFamily.value()};
 
   std::vector<VkDeviceQueueCreateInfo> queue_create_infos;
   float queuePriority = 1.0f;
@@ -162,20 +163,23 @@ VkResult VulkanContext::CreateLogicalDevice() {
   // Filling logical device creation info
   VkDeviceCreateInfo device_create_info{};
   device_create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-  device_create_info.queueCreateInfoCount = static_cast<uint32_t>(queue_create_infos.size());
+  device_create_info.queueCreateInfoCount =
+      static_cast<uint32_t>(queue_create_infos.size());
   device_create_info.pQueueCreateInfos = queue_create_infos.data();
 
   // Extensions
   const std::vector<const char *> device_extensions = {
-		VK_KHR_SWAPCHAIN_EXTENSION_NAME
-	};
-  device_create_info.enabledExtensionCount = static_cast<uint32_t>(device_extensions.size());
+      VK_KHR_SWAPCHAIN_EXTENSION_NAME};
+  device_create_info.enabledExtensionCount =
+      static_cast<uint32_t>(device_extensions.size());
   device_create_info.ppEnabledExtensionNames = device_extensions.data();
 
   // Creating logical device
-  VkResult result = vkCreateDevice(physical_device_, &device_create_info, nullptr, &device_);
+  VkResult result =
+      vkCreateDevice(physical_device_, &device_create_info, nullptr, &device_);
 
-  vkGetDeviceQueue(device_, indices.graphicsFamily.value(), 0, &graphics_queue_);
+  vkGetDeviceQueue(device_, indices.graphicsFamily.value(), 0,
+                   &graphics_queue_);
   vkGetDeviceQueue(device_, indices.presentFamily.value(), 0, &present_queue_);
 
   TE_TRACE("Device Created successfully");
@@ -187,7 +191,8 @@ VkResult VulkanContext::CreateSurface(GLFWwindow *window) {
     TE_ERROR("Cannot create surface");
     return VK_ERROR_INITIALIZATION_FAILED;
   }
-  VkResult result = glfwCreateWindowSurface(instance_, window, nullptr, &surface_);
+  VkResult result =
+      glfwCreateWindowSurface(instance_, window, nullptr, &surface_);
 
   TE_TRACE("Surface created successfully");
   return result;
@@ -227,7 +232,8 @@ VulkanContext::FindFamilyIndices(VkPhysicalDevice device) {
   vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
 
   std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
-  vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
+  vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount,
+                                           queueFamilies.data());
 
   int i = 0;
   for (const auto &queueFamily : queueFamilies) {
@@ -256,22 +262,26 @@ VulkanContext::SwapChainSupportDetails
 VulkanContext::QuerySwapChainSupport(VkPhysicalDevice device) {
   SwapChainSupportDetails details;
 
-  vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface_, &details.capabilities);
+  vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface_,
+                                            &details.capabilities);
 
   uint32_t formatCount;
   vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface_, &formatCount, nullptr);
 
   if (formatCount != 0) {
     details.formats.resize(formatCount);
-    vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface_, &formatCount,details.formats.data());
+    vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface_, &formatCount,
+                                         details.formats.data());
   }
 
   uint32_t presentModeCount;
-  vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface_, &presentModeCount, nullptr);
+  vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface_, &presentModeCount,
+                                            nullptr);
 
   if (presentModeCount != 0) {
     details.presentModes.resize(presentModeCount);
-    vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface_, &presentModeCount, details.presentModes.data());
+    vkGetPhysicalDeviceSurfacePresentModesKHR(
+        device, surface_, &presentModeCount, details.presentModes.data());
   }
 
   return details;
@@ -285,7 +295,8 @@ VkResult VulkanContext::CreateSwapchain(GLFWwindow *window) {
 
   VkSurfaceFormatKHR format;
   for (const auto &available_format : details.formats) {
-    if (available_format.format == VK_FORMAT_B8G8R8A8_SRGB && available_format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
+    if (available_format.format == VK_FORMAT_B8G8R8A8_SRGB &&
+        available_format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
       format = available_format;
       break;
     }
@@ -305,13 +316,12 @@ VkResult VulkanContext::CreateSwapchain(GLFWwindow *window) {
   int width;
   glfwGetFramebufferSize(window, &width, &height);
 
-  VkExtent2D extent = {
-		static_cast<uint32_t>(width),
-    static_cast<uint32_t>(height)
-	};
+  VkExtent2D extent = {static_cast<uint32_t>(width),
+                       static_cast<uint32_t>(height)};
 
   uint32_t image_count = details.capabilities.minImageCount + 1;
-  if (details.capabilities.maxImageCount > 0 && image_count > details.capabilities.maxImageCount) {
+  if (details.capabilities.maxImageCount > 0 &&
+      image_count > details.capabilities.maxImageCount) {
     image_count = details.capabilities.maxImageCount;
   }
 
@@ -327,10 +337,8 @@ VkResult VulkanContext::CreateSwapchain(GLFWwindow *window) {
   create_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
   QueueFamilyIndices indices = FindFamilyIndices(physical_device_);
-  uint32_t queueFamilyIndices[] = {
-		indices.graphicsFamily.value(),
-		indices.presentFamily.value()
-	};
+  uint32_t queueFamilyIndices[] = {indices.graphicsFamily.value(),
+                                   indices.presentFamily.value()};
 
   if (indices.graphicsFamily != indices.presentFamily) {
     create_info.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
@@ -347,12 +355,14 @@ VkResult VulkanContext::CreateSwapchain(GLFWwindow *window) {
 
   create_info.oldSwapchain = VK_NULL_HANDLE;
 
-  VkResult result = vkCreateSwapchainKHR(device_, &create_info, nullptr, &swapchain_);
+  VkResult result =
+      vkCreateSwapchainKHR(device_, &create_info, nullptr, &swapchain_);
   TE_TRACE("Swapchain Created successfully");
 
   vkGetSwapchainImagesKHR(device_, swapchain_, &image_count, nullptr);
   swapchain_images_.resize(image_count);
-  vkGetSwapchainImagesKHR(device_, swapchain_, &image_count, swapchain_images_.data());
+  vkGetSwapchainImagesKHR(device_, swapchain_, &image_count,
+                          swapchain_images_.data());
 
   swapchain_image_format_ = format.format;
   swapchain_extent_ = extent;
@@ -380,7 +390,8 @@ VkResult VulkanContext::CreateImageViews() {
     createInfo.subresourceRange.levelCount = 1;
     createInfo.subresourceRange.baseArrayLayer = 0;
     createInfo.subresourceRange.layerCount = 1;
-    result = vkCreateImageView(device_, &createInfo, nullptr, &swapchain_image_views_[i]);
+    result = vkCreateImageView(device_, &createInfo, nullptr,
+                               &swapchain_image_views_[i]);
   }
 
   TE_TRACE("Image View created succesfully");

@@ -10,6 +10,9 @@ public:
   VkResult Init(GLFWwindow *window);
   VkResult Terminate();
 
+  VkDevice GetDevice() { return device_; }
+  VkPhysicalDevice GetPhysicalDevice() { return physical_device_; }
+
 private:
   VkResult CreateInstance();
   VkResult EnumeratePhysicalDevices();
