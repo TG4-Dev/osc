@@ -2,36 +2,12 @@
 #include "platform/log.hpp"
 #include <cstddef>
 #include <cstdint>
-#include <map>
-#include <optional>
-#include <set>
 #include <vulkan/vulkan_core.h>
 
-struct VulkanContext::QueueFamilyIndices {
-  std::optional<uint32_t> graphicsFamily;
-  std::optional<uint32_t> presentFamily;
-
-  bool isComplete() {
-    return graphicsFamily.has_value() && presentFamily.has_value();
-  }
-};
-
-struct VulkanContext::SwapChainSupportDetails {
-  VkSurfaceCapabilitiesKHR capabilities;
-  std::vector<VkSurfaceFormatKHR> formats;
-  std::vector<VkPresentModeKHR> presentModes;
-};
-
 VkResult VulkanContext::Init(GLFWwindow *window) {
+  swap_chain_rebuild_ = false;
+
   VkResult result = CreateInstance();
-  if (result != VK_SUCCESS) {
-    return result;
-  }
-  result = CreateSurface(window);
-  if (result != VK_SUCCESS) {
-    return result;
-  }
-  result = EnumeratePhysicalDevices();
   if (result != VK_SUCCESS) {
     return result;
   }
@@ -39,15 +15,19 @@ VkResult VulkanContext::Init(GLFWwindow *window) {
   if (result != VK_SUCCESS) {
     return result;
   }
+  result = GetGraphicalQueueIndex();
+  if (result != VK_SUCCESS) {
+    return result;
+  }
   result = CreateLogicalDevice();
   if (result != VK_SUCCESS) {
     return result;
   }
-  result = CreateSwapchain(window);
+  result = CreateDescriptorPool();
   if (result != VK_SUCCESS) {
     return result;
   }
-  result = CreateImageViews();
+  result = SetupVulkanWindow(window);
   if (result != VK_SUCCESS) {
     return result;
   }
@@ -100,323 +80,302 @@ VkResult VulkanContext::CreateInstance() {
   return VK_SUCCESS;
 }
 
-VkResult VulkanContext::EnumeratePhysicalDevices() {
-  uint32_t physical_device_count = 0;
+VkResult VulkanContext::SelectPhysicalDevice() {
+  uint32_t physicalDeviceCount;
 
-  VkResult result = VK_SUCCESS;
-
-  // Getting amount of phys devices
-  result =
-      vkEnumeratePhysicalDevices(instance_, &physical_device_count, nullptr);
-
-  if (result == VK_SUCCESS) {
-    physical_devices_.resize(physical_device_count);
-    vkEnumeratePhysicalDevices(instance_, &physical_device_count,
-                               &physical_devices_[0]);
-
-    TE_TRACE("Found {} VkDevices", physical_device_count);
+  VkResult res = vkEnumeratePhysicalDevices(instance_, &physicalDeviceCount,
+                                            &physical_devices_[0]);
+  if (res != VK_SUCCESS) {
+    TE_CRITICAL("Cannot enumerate physical devices");
+    return res;
   }
-  return result;
+
+  physical_devices_.resize(physicalDeviceCount);
+  res = vkEnumeratePhysicalDevices(instance_, &physicalDeviceCount,
+                                   &physical_devices_[0]);
+  TE_TRACE("Found {} VkDevices", physicalDeviceCount);
+
+  for (size_t i = 0; i < physicalDeviceCount; ++i) {
+    physical_device_ = physical_devices_[i];
+    VkPhysicalDeviceProperties deviceProperties;
+    vkGetPhysicalDeviceProperties(physical_device_, &deviceProperties);
+    if (deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
+      break;
+    }
+  }
+  TE_TRACE("Physical device successfully selected");
+  return VK_SUCCESS;
 }
 
-VkResult VulkanContext::SelectPhysicalDevice() {
-  std::multimap<int, VkPhysicalDevice> candidates;
+VkResult VulkanContext::GetGraphicalQueueIndex() {
+  uint32_t familyCount;
 
-  VkPhysicalDeviceProperties device_properties{};
-  for (const auto &device : physical_devices_) {
-    vkGetPhysicalDeviceProperties(device, &device_properties);
-    TE_TRACE("Found physical device: {}", device_properties.deviceName);
-    int score = RateDeviceSuitability(device);
-    candidates.insert(std::make_pair(score, device));
+  vkGetPhysicalDeviceQueueFamilyProperties(physical_device_, &familyCount,
+                                           nullptr);
+  std::vector<VkQueueFamilyProperties> queueFamilyProperties(familyCount);
+
+  vkGetPhysicalDeviceQueueFamilyProperties(physical_device_, &familyCount,
+                                           queueFamilyProperties.data());
+
+  for (size_t i = 0; i < familyCount; i++) {
+    if ((queueFamilyProperties[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) != 0) {
+      queue_family_ = i;
+      TE_TRACE("Graphical queue index successfully gained");
+      return VK_SUCCESS;
+    }
   }
 
-  if (candidates.rbegin()->first > 0) {
-    VkPhysicalDeviceProperties device_properties;
-
-    physical_device_ = candidates.rbegin()->second;
-
-    vkGetPhysicalDeviceProperties(physical_device_, &device_properties);
-
-    TE_TRACE("Selected physical device: {} ", device_properties.deviceName);
-    return VK_SUCCESS;
-  } else {
-    return VK_ERROR_INITIALIZATION_FAILED;
-  }
+  TE_ERROR("Graphical queue index wasn't gained");
+  return VK_ERROR_INITIALIZATION_FAILED;
 }
 
 VkResult VulkanContext::CreateLogicalDevice() {
-  QueueFamilyIndices indices = FindFamilyIndices(physical_device_);
-  std::set<uint32_t> uniqueQueueFamilies = {indices.graphicsFamily.value(),
-                                            indices.presentFamily.value()};
+  std::vector<const char *> device_extensions;
+  device_extensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 
-  std::vector<VkDeviceQueueCreateInfo> queue_create_infos;
-  float queuePriority = 1.0f;
-  for (uint32_t queueFamily : uniqueQueueFamilies) {
-    VkDeviceQueueCreateInfo queueCreateInfo{};
-    queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-    queueCreateInfo.queueFamilyIndex = queueFamily;
-    queueCreateInfo.queueCount = 1;
-    queueCreateInfo.pQueuePriorities = &queuePriority;
-    queue_create_infos.push_back(queueCreateInfo);
-  }
+  float queue_priority = 0.0f;
+  VkDeviceQueueCreateInfo queueCreateInfo{};
+  queueCreateInfo.flags = VkDeviceQueueCreateFlags();
+  queueCreateInfo.queueFamilyIndex = static_cast<uint32_t>(queue_family_);
+  queueCreateInfo.queueCount = 1;
+  queueCreateInfo.pQueuePriorities = &queue_priority;
 
-  // Filling logical device creation info
-  VkDeviceCreateInfo device_create_info{};
-  device_create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-  device_create_info.queueCreateInfoCount =
-      static_cast<uint32_t>(queue_create_infos.size());
-  device_create_info.pQueueCreateInfos = queue_create_infos.data();
+  VkDeviceCreateInfo deviceCreateInfo{};
+  deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+  deviceCreateInfo.queueCreateInfoCount = 1;
+  deviceCreateInfo.pQueueCreateInfos = &queueCreateInfo;
+  deviceCreateInfo.enabledExtensionCount = device_extensions.size();
+  deviceCreateInfo.ppEnabledExtensionNames = device_extensions.data();
 
-  // Extensions
-  const std::vector<const char *> device_extensions = {
-      VK_KHR_SWAPCHAIN_EXTENSION_NAME};
-  device_create_info.enabledExtensionCount =
-      static_cast<uint32_t>(device_extensions.size());
-  device_create_info.ppEnabledExtensionNames = device_extensions.data();
-
-  // Creating logical device
-  VkResult result =
-      vkCreateDevice(physical_device_, &device_create_info, nullptr, &device_);
-
-  vkGetDeviceQueue(device_, indices.graphicsFamily.value(), 0,
-                   &graphics_queue_);
-  vkGetDeviceQueue(device_, indices.presentFamily.value(), 0, &present_queue_);
-
-  TE_TRACE("Device Created successfully");
-  return result;
-}
-
-VkResult VulkanContext::CreateSurface(GLFWwindow *window) {
-  if (!window) {
-    TE_ERROR("Cannot create surface");
+  VkResult res =
+      vkCreateDevice(physical_device_, &deviceCreateInfo, nullptr, &device_);
+  if (!device_) {
+    TE_ERROR("Error creating logical device");
     return VK_ERROR_INITIALIZATION_FAILED;
   }
-  VkResult result =
-      glfwCreateWindowSurface(instance_, window, nullptr, &surface_);
+  TE_TRACE("Device created successfully");
 
-  TE_TRACE("Surface created successfully");
-  return result;
+  vkGetDeviceQueue(device_, queue_family_, 0, &queue_);
+  if (!queue_) {
+    TE_ERROR("Error getting queue");
+    return VK_ERROR_INITIALIZATION_FAILED;
+  }
+  TE_TRACE("Queue gained successfully");
+
+  return res;
 }
 
-int VulkanContext::RateDeviceSuitability(VkPhysicalDevice physical_device) {
-  int score = 0;
+VkResult VulkanContext::CreateDescriptorPool() {
+  std::vector<VkDescriptorPoolSize> pool_sizes = {
+      {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+       IMGUI_IMPL_VULKAN_MINIMUM_IMAGE_SAMPLER_POOL_SIZE}};
 
-  QueueFamilyIndices indices = FindFamilyIndices(physical_device);
-  if (!indices.isComplete()) {
-    return score;
+  VkDescriptorPoolCreateInfo poolCreateInfo{};
+  poolCreateInfo.maxSets = 1000;
+  poolCreateInfo.poolSizeCount = static_cast<uint32_t>(pool_sizes.size());
+  poolCreateInfo.pPoolSizes = pool_sizes.data();
+
+  VkResult res = vkCreateDescriptorPool(device_, &poolCreateInfo, nullptr,
+                                        &descriptor_pool_);
+  if (res != VK_SUCCESS) {
+    TE_ERROR("Error creating descriptor pool");
+    return res;
   }
-
-  VkPhysicalDeviceProperties device_properties{};
-  VkPhysicalDeviceFeatures device_features{};
-
-  vkGetPhysicalDeviceProperties(physical_device, &device_properties);
-  vkGetPhysicalDeviceFeatures(physical_device, &device_features);
-  if (device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
-    score += 1000;
-  }
-
-  score += device_properties.limits.maxImageDimension2D;
-
-  /*if (!device_features.geometryShader) {*/
-  /*  return 0;*/
-  /*}*/
-
-  return score;
+  TE_TRACE("Descriptor pool created successfully");
+  return res;
 }
 
-VulkanContext::QueueFamilyIndices
-VulkanContext::FindFamilyIndices(VkPhysicalDevice device) {
-  QueueFamilyIndices indices;
+VkResult VulkanContext::SetupVulkanWindow(GLFWwindow *window) {
+  int w;
+  int h;
 
-  uint32_t queueFamilyCount = 0;
-  vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
+  glfwGetFramebufferSize(window, &w, &h);
 
-  std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
-  vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount,
-                                           queueFamilies.data());
+  min_image_count_ = 2;
 
-  int i = 0;
-  for (const auto &queueFamily : queueFamilies) {
-    if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
-      indices.graphicsFamily = i;
-    }
+  const VkFormat requestSurfaceImageFormat[] = {
+      VK_FORMAT_B8G8R8A8_UNORM, VK_FORMAT_R8G8B8A8_UNORM,
+      VK_FORMAT_B8G8R8_UNORM, VK_FORMAT_R8G8B8_UNORM};
 
-    VkBool32 presentSupport = false;
-    vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface_, &presentSupport);
+  const VkColorSpaceKHR requestSurfaceColorSpace =
+      VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
 
-    if (presentSupport) {
-      indices.presentFamily = i;
-    }
-
-    if (indices.isComplete()) {
-      break;
-    }
-
-    i++;
+  glfwCreateWindowSurface(instance_, window, nullptr, &surface_);
+  if (!surface_) {
+    TE_ERROR("Error creating window surface");
+    return VK_ERROR_INITIALIZATION_FAILED;
   }
 
-  return indices;
+  wd.Surface = surface_;
+  wd.SurfaceFormat = ImGui_ImplVulkanH_SelectSurfaceFormat(
+      physical_device_, wd.Surface, requestSurfaceImageFormat,
+      (size_t)IM_ARRAYSIZE(requestSurfaceImageFormat),
+      requestSurfaceColorSpace);
+
+#ifdef APP_USE_UNLIMITED_FRAME_RATE
+  VkPresentModeKHR present_modes[] = {VK_PRESENT_MODE_MAILBOX_KHR,
+                                      VK_PRESENT_MODE_IMMEDIATE_KHR,
+                                      VK_PRESENT_MODE_FIFO_KHR};
+#else
+  VkPresentModeKHR present_modes[] = {VK_PRESENT_MODE_FIFO_KHR};
+#endif
+
+  wd.PresentMode = ImGui_ImplVulkanH_SelectPresentMode(
+      physical_device_, wd.Surface, &present_modes[0],
+      IM_ARRAYSIZE(present_modes));
+
+  ImGui_ImplVulkanH_CreateOrResizeWindow(instance_, physical_device_, device_,
+                                         &wd, queue_family_, nullptr, w, h,
+                                         min_image_count_, 0);
+  TE_TRACE("Vulkan window setup successfully done");
+  return VK_SUCCESS;
 }
 
-VulkanContext::SwapChainSupportDetails
-VulkanContext::QuerySwapChainSupport(VkPhysicalDevice device) {
-  SwapChainSupportDetails details;
+VkResult VulkanContext::FrameRender(ImDrawData *draw_data) {
+  VkSemaphore imageAcquiredSemaphore =
+      wd.FrameSemaphores[wd.SemaphoreIndex].ImageAcquiredSemaphore;
+  VkSemaphore renderCompleteSemaphore =
+      wd.FrameSemaphores[wd.SemaphoreIndex].RenderCompleteSemaphore;
 
-  vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface_,
-                                            &details.capabilities);
-
-  uint32_t formatCount;
-  vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface_, &formatCount, nullptr);
-
-  if (formatCount != 0) {
-    details.formats.resize(formatCount);
-    vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface_, &formatCount,
-                                         details.formats.data());
+  VkResult res =
+      vkAcquireNextImageKHR(device_, wd.Swapchain, UINT64_MAX,
+                            imageAcquiredSemaphore, nullptr, &wd.FrameIndex);
+  if (res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_SUBOPTIMAL_KHR) {
+    swap_chain_rebuild_ = true;
+  }
+  if (res != VK_SUCCESS) {
+    TE_ERROR("Error getting next image in FrameRender");
+    return res;
   }
 
-  uint32_t presentModeCount;
-  vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface_, &presentModeCount,
-                                            nullptr);
-
-  if (presentModeCount != 0) {
-    details.presentModes.resize(presentModeCount);
-    vkGetPhysicalDeviceSurfacePresentModesKHR(
-        device, surface_, &presentModeCount, details.presentModes.data());
-  }
-
-  return details;
-}
-
-VkResult VulkanContext::CreateSwapchain(GLFWwindow *window) {
-  SwapChainSupportDetails details = QuerySwapChainSupport(physical_device_);
-  if (details.formats.empty() && details.presentModes.empty()) {
-    return VK_ERROR_UNKNOWN;
-  }
-
-  VkSurfaceFormatKHR format;
-  for (const auto &available_format : details.formats) {
-    if (available_format.format == VK_FORMAT_B8G8R8A8_SRGB &&
-        available_format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
-      format = available_format;
-      break;
+  ImGui_ImplVulkanH_Frame fd = wd.Frames[wd.FrameIndex];
+  {
+    res = vkWaitForFences(device_, 1, &fd.Fence, VK_TRUE, UINT64_MAX);
+    if (res != VK_SUCCESS) {
+      TE_ERROR("Error waiting for fences");
+      return res;
     }
-  }
 
-  VkPresentModeKHR present_mode;
-  for (const auto &available_present_mode : details.presentModes) {
-    if (available_present_mode == VK_PRESENT_MODE_MAILBOX_KHR) {
-      present_mode = available_present_mode;
-      break;
-    } else {
-      present_mode = VK_PRESENT_MODE_FIFO_KHR;
+    res = vkResetFences(device_, 1, &fd.Fence);
+    if (res != VK_SUCCESS) {
+      TE_ERROR("Error reseting fences");
+      return res;
     }
   }
 
-  int height;
-  int width;
-  glfwGetFramebufferSize(window, &width, &height);
+  {
+    res = vkResetCommandPool(device_, fd.CommandPool, 0);
+    if (res != VK_SUCCESS) {
+      TE_ERROR("Error reseting command pool");
+      return res;
+    }
 
-  VkExtent2D extent = {static_cast<uint32_t>(width),
-                       static_cast<uint32_t>(height)};
+    VkCommandBufferBeginInfo info{};
+    info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    info.flags |= VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-  uint32_t image_count = details.capabilities.minImageCount + 1;
-  if (details.capabilities.maxImageCount > 0 &&
-      image_count > details.capabilities.maxImageCount) {
-    image_count = details.capabilities.maxImageCount;
+    res = vkBeginCommandBuffer(fd.CommandBuffer, &info);
+    if (res != VK_SUCCESS) {
+      TE_ERROR("Error begining command buffer");
+      return res;
+    }
+  }
+  {
+    VkRenderPassBeginInfo info{};
+    info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    info.renderPass = wd.RenderPass;
+    info.framebuffer = fd.Framebuffer;
+    info.renderArea.extent.width = wd.Width;
+    info.renderArea.extent.height = wd.Height;
+    info.clearValueCount = 1;
+    info.pClearValues = &wd.ClearValue;
+    vkCmdBeginRenderPass(fd.CommandBuffer, &info, VK_SUBPASS_CONTENTS_INLINE);
   }
 
-  VkSwapchainCreateInfoKHR create_info{};
-  create_info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-  create_info.surface = surface_;
+  ImGui_ImplVulkan_RenderDrawData(draw_data, fd.CommandBuffer);
 
-  create_info.minImageCount = image_count;
-  create_info.imageFormat = format.format;
-  create_info.imageColorSpace = format.colorSpace;
-  create_info.imageExtent = extent;
-  create_info.imageArrayLayers = 1;
-  create_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+  vkCmdEndRenderPass(fd.CommandBuffer);
+  {
+    VkPipelineStageFlags wait_stage =
+        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    VkSubmitInfo info{};
+    info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    info.waitSemaphoreCount = 1;
+    info.pWaitSemaphores = &imageAcquiredSemaphore;
+    info.pWaitDstStageMask = &wait_stage;
+    info.commandBufferCount = 1;
+    info.pCommandBuffers = &fd.CommandBuffer;
+    info.signalSemaphoreCount = 1;
+    info.pSignalSemaphores = &renderCompleteSemaphore;
 
-  QueueFamilyIndices indices = FindFamilyIndices(physical_device_);
-  uint32_t queueFamilyIndices[] = {indices.graphicsFamily.value(),
-                                   indices.presentFamily.value()};
-
-  if (indices.graphicsFamily != indices.presentFamily) {
-    create_info.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
-    create_info.queueFamilyIndexCount = 2;
-    create_info.pQueueFamilyIndices = queueFamilyIndices;
-  } else {
-    create_info.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    res = vkEndCommandBuffer(fd.CommandBuffer);
+    if (res != VK_SUCCESS) {
+      TE_ERROR("Error ending command buffer");
+      return res;
+    }
+    res = vkQueueSubmit(queue_, 1, &info, fd.Fence);
+    if (res != VK_SUCCESS) {
+      TE_ERROR("Error submiting queue");
+      return res;
+    }
   }
 
-  create_info.preTransform = details.capabilities.currentTransform;
-  create_info.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-  create_info.presentMode = present_mode;
-  create_info.clipped = VK_TRUE;
+  return VK_SUCCESS;
+}
+VkResult VulkanContext::FramePresent() {
+  if (swap_chain_rebuild_) {
+    return VK_SUCCESS;
+  }
+  VkSemaphore render_complete_semaphore =
+      wd.FrameSemaphores[wd.SemaphoreIndex].RenderCompleteSemaphore;
+  VkPresentInfoKHR info = {};
+  info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+  info.waitSemaphoreCount = 1;
+  info.pWaitSemaphores = &render_complete_semaphore;
+  info.swapchainCount = 1;
+  info.pSwapchains = &wd.Swapchain;
+  info.pImageIndices = &wd.FrameIndex;
 
-  create_info.oldSwapchain = VK_NULL_HANDLE;
+  VkResult res = vkQueuePresentKHR(queue_, &info);
+  if (res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_SUBOPTIMAL_KHR) {
+    swap_chain_rebuild_ = true;
+  }
+  if (res != VK_SUCCESS) {
+    TE_ERROR("Error queueing image for presentation (QueuePresent)");
+    return res;
+  }
 
-  VkResult result =
-      vkCreateSwapchainKHR(device_, &create_info, nullptr, &swapchain_);
-  TE_TRACE("Swapchain Created successfully");
-
-  vkGetSwapchainImagesKHR(device_, swapchain_, &image_count, nullptr);
-  swapchain_images_.resize(image_count);
-  vkGetSwapchainImagesKHR(device_, swapchain_, &image_count,
-                          swapchain_images_.data());
-
-  swapchain_image_format_ = format.format;
-  swapchain_extent_ = extent;
-  return result;
+  wd.SemaphoreIndex = (wd.SemaphoreIndex + 1) % wd.SemaphoreCount;
+  return VK_SUCCESS;
 }
 
-VkResult VulkanContext::CreateImageViews() {
-
-  VkResult result = VK_SUCCESS;
-
-  swapchain_image_views_.resize(swapchain_images_.size());
-
-  for (size_t i = 0; i < swapchain_images_.size(); i++) {
-    VkImageViewCreateInfo createInfo{};
-    createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    createInfo.image = swapchain_images_[i];
-    createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-    createInfo.format = swapchain_image_format_;
-    createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-    createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-    createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-    createInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-    createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    createInfo.subresourceRange.baseMipLevel = 0;
-    createInfo.subresourceRange.levelCount = 1;
-    createInfo.subresourceRange.baseArrayLayer = 0;
-    createInfo.subresourceRange.layerCount = 1;
-    result = vkCreateImageView(device_, &createInfo, nullptr,
-                               &swapchain_image_views_[i]);
+void VulkanContext::ResizeSwapChain(int width, int height) {
+  if (swap_chain_rebuild_ || wd.Width != width || wd.Height != height) {
+    ImGui_ImplVulkan_SetMinImageCount(min_image_count_);
+    ImGui_ImplVulkanH_CreateOrResizeWindow(instance_, physical_device_, device_,
+                                           &wd, queue_family_, nullptr, width,
+                                           height, min_image_count_, 0);
+    wd.FrameIndex = 0;
+    swap_chain_rebuild_ = false;
   }
-
-  TE_TRACE("Image View created succesfully");
-  return result;
 }
 
 VkResult VulkanContext::Terminate() {
+  ImGui_ImplVulkanH_DestroyWindow(instance_, device_, &wd, nullptr);
 
-  for (auto image_views : swapchain_image_views_) {
-    vkDestroyImageView(device_, image_views, nullptr);
-  }
-
-  if (swapchain_ == VK_NULL_HANDLE) {
-    TE_WARN("Attemted to terminate null Vulkan swapchain");
+  if (descriptor_pool_ == VK_NULL_HANDLE) {
+    TE_WARN("Attemted to terminate null Vulkan descriptor pool");
     return VK_ERROR_INITIALIZATION_FAILED;
   }
 
-  vkDestroySwapchainKHR(device_, swapchain_, nullptr);
+  vkDestroyDescriptorPool(device_, descriptor_pool_, nullptr);
 
-  if (surface_ == VK_NULL_HANDLE) {
-    TE_WARN("Attemted to terminate null Vulkan surface");
+  if (device_ == VK_NULL_HANDLE) {
+    TE_WARN("Attemted to terminate null Vulkan device");
     return VK_ERROR_INITIALIZATION_FAILED;
   }
 
-  vkDestroySurfaceKHR(instance_, surface_, nullptr);
+  vkDestroyDevice(device_, nullptr);
 
   if (instance_ == VK_NULL_HANDLE) {
     TE_WARN("Attemted to terminate null Vulkan instance");
@@ -424,7 +383,6 @@ VkResult VulkanContext::Terminate() {
   }
 
   vkDestroyInstance(instance_, nullptr);
-  instance_ = VK_NULL_HANDLE;
 
   TE_TRACE("Vulkan successfully terminated");
   return VK_SUCCESS;

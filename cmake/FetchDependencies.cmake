@@ -34,10 +34,17 @@ FetchContent_Declare(
   GIT_TAG v3.11.0
 )
 
+FetchContent_Declare(
+  ImGUI
+  GIT_REPOSITORY https://github.com/ocornut/imgui.git
+  GIT_TAG v1.92.5
+)
+
 FetchContent_MakeAvailable(
   spdlog
   glm
   glfw
   gtest
   Taskflow
+  ImGUI
 )

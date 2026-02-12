@@ -19,6 +19,8 @@ public:
 
   GLFWwindow *GetWindowHandle() { return window_; }
 
+  float main_scale;
+
 private:
   GLFWwindow *window_;
 };

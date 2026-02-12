@@ -1,8 +1,7 @@
 #pragma once
 #include <vector>
 #include <vulkan/vulkan.h>
-#include <vulkan/vulkan_core.h>
-
+#include <imgui_impl_vulkan.h>
 #include "GLFW/glfw3.h"
 
 class VulkanContext {
@@ -10,25 +9,31 @@ public:
   VkResult Init(GLFWwindow *window);
   VkResult Terminate();
 
+  VkResult FrameRender(ImDrawData *draw_data);
+  VkResult FramePresent();
+
+  void ResizeSwapChain(int width, int height);
+
+  ImGui_ImplVulkanH_Window wd;
+
+public:
   VkDevice GetDevice() { return device_; }
   VkPhysicalDevice GetPhysicalDevice() { return physical_device_; }
+  VkInstance GetInstance() { return instance_; }
+  size_t GetQueueFamily() { return queue_family_; }
+  VkQueue GetQueue() { return queue_; }
+  VkDescriptorPool GetDescriptorPool() { return descriptor_pool_; }
+  uint32_t GetMinImageCount() { return min_image_count_; }
 
 private:
   VkResult CreateInstance();
-  VkResult EnumeratePhysicalDevices();
   VkResult SelectPhysicalDevice();
+  VkResult GetGraphicalQueueIndex();
   VkResult CreateLogicalDevice();
-  VkResult CreateSurface(GLFWwindow *window);
-  VkResult CreateSwapchain(GLFWwindow *window);
-  VkResult CreateImageViews();
+  VkResult CreateCommandPool();
+  VkResult CreateDescriptorPool();
 
-  int RateDeviceSuitability(VkPhysicalDevice device);
-
-  struct QueueFamilyIndices;
-  QueueFamilyIndices FindFamilyIndices(VkPhysicalDevice);
-
-  struct SwapChainSupportDetails;
-  SwapChainSupportDetails QuerySwapChainSupport(VkPhysicalDevice);
+  VkResult SetupVulkanWindow(GLFWwindow *window);
 
 private:
   VkInstance instance_ = VK_NULL_HANDLE;
@@ -36,11 +41,11 @@ private:
   VkPhysicalDevice physical_device_ = VK_NULL_HANDLE;
   VkDevice device_ = VK_NULL_HANDLE;
   VkSurfaceKHR surface_ = VK_NULL_HANDLE;
-  VkQueue graphics_queue_;
-  VkQueue present_queue_;
-  VkSwapchainKHR swapchain_ = VK_NULL_HANDLE;
-  std::vector<VkImage> swapchain_images_;
-  VkFormat swapchain_image_format_;
-  VkExtent2D swapchain_extent_;
-  std::vector<VkImageView> swapchain_image_views_;
+  size_t queue_family_;
+  VkQueue queue_ = VK_NULL_HANDLE;
+  VkDescriptorPool descriptor_pool_ = VK_NULL_HANDLE;
+
+  uint32_t min_image_count_;
+
+  bool swap_chain_rebuild_;
 };

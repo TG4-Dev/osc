@@ -1,7 +1,7 @@
 # OS specific styles 
 .DS_STORE
 
-
+compile_commands.json
 
 # builds
 /build/
