@@ -1,7 +1,7 @@
 #include "window.hpp"
 #include "GLFW/glfw3.h"
-#include "platform/log.hpp"
 #include "imgui_impl_glfw.h"
+#include "platform/log.hpp"
 
 namespace platform {
 
@@ -15,13 +15,15 @@ int Window::Init(windowOpts opts) {
 
   main_scale = ImGui_ImplGlfw_GetContentScaleForMonitor(glfwGetPrimaryMonitor());
 
-  window_ = glfwCreateWindow(static_cast<int>(opts.width * main_scale), static_cast<int>(opts.height * main_scale), opts.name, nullptr, nullptr);
+  window_ =
+      glfwCreateWindow(static_cast<int>(opts.width * main_scale),
+                       static_cast<int>(opts.height * main_scale), opts.name, nullptr, nullptr);
   if (!window_) {
     TE_CRITICAL("Cannot create window");
-		return GLFW_FALSE;
+    return GLFW_FALSE;
   }
   TE_TRACE("Window created successfully");
-	return GLFW_TRUE;
+  return GLFW_TRUE;
 }
 
 void Window::Destroy() {

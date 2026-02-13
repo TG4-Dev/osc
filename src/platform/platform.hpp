@@ -1,9 +1,9 @@
-#pragma once 
+#pragma once
 #include <GLFW/glfw3.h>
 
 namespace platform {
 
-  int Init();
-	void Exit();
+int Init();
+void Exit();
 
-} //platform 
+} // namespace platform
