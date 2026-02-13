@@ -4,10 +4,10 @@
 int platform::Init() {
   if (!glfwInit()) {
     TE_CRITICAL("Cannot initialize glfw");
-		return GLFW_FALSE;
+    return GLFW_FALSE;
   }
   TE_TRACE("Glfw successfuly initialized");
-	return GLFW_TRUE;
+  return GLFW_TRUE;
 }
 
 void platform::Exit() {

@@ -16,8 +16,7 @@ Application::Application(platform::windowOpts opts) {
   if (platform_window_.Init(opts) == GLFW_FALSE) {
     throw std::runtime_error("Error creating window");
   }
-  if (VkResult res = vulkan_ctx_.Init(platform_window_.GetWindowHandle());
-      res != VK_SUCCESS) {
+  if (VkResult res = vulkan_ctx_.Init(platform_window_.GetWindowHandle()); res != VK_SUCCESS) {
     throw std::runtime_error(string_VkResult(res));
   }
 }
@@ -29,8 +28,6 @@ Application::~Application() {
   platform::Exit();
 }
 
-void Application::Run() {
-  imgui_ctx_.Run(&vulkan_ctx_, &platform_window_);
-}
+void Application::Run() { imgui_ctx_.Run(&vulkan_ctx_, &platform_window_); }
 
 } // namespace core
